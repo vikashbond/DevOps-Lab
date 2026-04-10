@@ -1,0 +1,19 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Jenkins
+workspace/
+target/
+
+# Ansible
+*.retry
+
+# Logs
+*.log
+
+# Secrets
+*.pem
+*.key
