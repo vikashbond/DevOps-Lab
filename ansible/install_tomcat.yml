@@ -1,0 +1,77 @@
+---
+- name: install and configure Tomcat
+  hosts: dev
+  become: yes
+ 
+  vars:
+    tomcat_version: 9.0.85
+    tomcat_user: tomcat
+    tomcat_group: tomcat
+    tomcat_dir: /opt/tomcat
+
+  tasks:
+
+    - name: Install Java
+      apt:
+        name: openjdk-11-jdk
+        state: present
+        update_cache: yes
+    - name: Create Tomact group
+      group:
+        name: "{{ tomcat_group }}"
+    - name: Create Tomcat user
+      user:
+       name: "{{ tomcat_user }}"
+       group: "{{ tomcat_group }}"
+       shell: /bin/false
+    - name: Download Tomcat
+      get_url:
+         url: "https://archive.apache.org/dist/tomcat/tomcat-9/v{{ tomcat_version }}/bin/apache-tomcat-{{ tomcat_version }}.tar.gz"
+         dest: /tmp/tomcat.tar.gz
+    - name: Create Tomcat Directory
+      file:
+       path: "{{ tomcat_dir }}"
+       state: directory
+    - name: Extract Tomcat
+      unarchive:
+       src: /tmp/tomcat.tar.gz
+       dest: "{{ tomcat_dir }}"
+       remote_src: yes
+       extra_opts: [--strip-components=1]
+    - name: Set owneship
+      file:
+       path: "{{ tomcat_dir }}"
+       owner: "{{ tomcat_user }}"
+       group: "{{ tomcat_group }}"
+       recurse: yes
+    - name: Create Tomcat service
+      copy:
+       dest: /etc/systemd/system/tomcat.service
+       content: |
+        [Unit]
+        Description= Apaache Tomcat
+          After=network.target
+
+          [Service]
+          Type=forking
+
+          User={{ tomcat_user }}
+          Group={{ tomcat_group }}
+          Environment=JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+          Environment=CATALINA_PID={{ tomcat_dir }}/temp/tomcat.pid
+          Environment=CATALINA_HOME={{ tomcat_dir }}
+          Environment=CATALINA_BASE={{ tomcat_dir }}
+
+          ExecStart={{ tomcat_dir }}/bin/startup.sh
+          ExecStop={{ tomcat_dir }}/bin/shutdown.sh
+
+          [Install]
+          WantedBy=multi-user.target
+    - name: Reload systemd 
+      systemd:
+         daemon_reload: yes
+    - name: Start Tomcat
+      systemd:
+         name: tomcat
+         state: started
+         enabled: yes
