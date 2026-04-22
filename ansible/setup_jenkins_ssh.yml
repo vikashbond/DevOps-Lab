@@ -1,0 +1,15 @@
+---
+- name: Setup Jenkins Passwordless SSH
+  hosts: webservers
+  gather_facts: no
+
+  vars:
+    ssh_user: devOpsUser
+
+  tasks:
+
+    - name: Add Jenkins public key to remote server
+      authorized_key:
+        user: "{{ ssh_user }}"
+        state: present
+        key: "{{ lookup('file', '/var/lib/jenkins/.ssh/id_rsa.pub') }}"

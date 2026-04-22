@@ -1,8 +1,8 @@
 ---
-- name: install and configure Tomcat
-  hosts: dev
+- name: Install and Configure Tomcat
+  hosts: webservers
   become: yes
- 
+
   vars:
     tomcat_version: 9.0.85
     tomcat_user: tomcat
@@ -16,40 +16,72 @@
         name: openjdk-11-jdk
         state: present
         update_cache: yes
-    - name: Create Tomact group
+
+    - name: Create Tomcat group
       group:
         name: "{{ tomcat_group }}"
+
     - name: Create Tomcat user
       user:
-       name: "{{ tomcat_user }}"
-       group: "{{ tomcat_group }}"
-       shell: /bin/false
+        name: "{{ tomcat_user }}"
+        group: "{{ tomcat_group }}"
+        shell: /bin/false
+
     - name: Download Tomcat
       get_url:
-         url: "https://archive.apache.org/dist/tomcat/tomcat-9/v{{ tomcat_version }}/bin/apache-tomcat-{{ tomcat_version }}.tar.gz"
-         dest: /tmp/tomcat.tar.gz
-    - name: Create Tomcat Directory
+        url: "https://archive.apache.org/dist/tomcat/tomcat-9/v{{ tomcat_version }}/bin/apache-tomcat-{{ tomcat_version }}.tar.gz"
+        dest: /tmp/tomcat.tar.gz
+
+    - name: Create Tomcat directory
       file:
-       path: "{{ tomcat_dir }}"
-       state: directory
+        path: "{{ tomcat_dir }}"
+        state: directory
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_group }}"
+        mode: '0755'
+
     - name: Extract Tomcat
       unarchive:
-       src: /tmp/tomcat.tar.gz
-       dest: "{{ tomcat_dir }}"
-       remote_src: yes
-       extra_opts: [--strip-components=1]
-    - name: Set owneship
+        src: /tmp/tomcat.tar.gz
+        dest: "{{ tomcat_dir }}"
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+
+    - name: Set ownership for Tomcat directory
       file:
-       path: "{{ tomcat_dir }}"
-       owner: "{{ tomcat_user }}"
-       group: "{{ tomcat_group }}"
-       recurse: yes
-    - name: Create Tomcat service
+        path: "{{ tomcat_dir }}"
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_group }}"
+        recurse: yes
+
+    - name: Set executable permission on Tomcat scripts
+      file:
+        path: "{{ tomcat_dir }}/bin/{{ item }}"
+        mode: '0755'
+      loop:
+        - startup.sh
+        - shutdown.sh
+        - catalina.sh
+
+    - name: Ensure required Tomcat directories exist
+      file:
+        path: "{{ tomcat_dir }}/{{ item }}"
+        state: directory
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_group }}"
+        mode: '0755'
+      loop:
+        - webapps
+        - temp
+        - work
+        - logs
+
+    - name: Create Tomcat systemd service
       copy:
-       dest: /etc/systemd/system/tomcat.service
-       content: |
-        [Unit]
-        Description= Apaache Tomcat
+        dest: /etc/systemd/system/tomcat.service
+        content: |
+          [Unit]
+          Description=Apache Tomcat
           After=network.target
 
           [Service]
@@ -57,6 +89,7 @@
 
           User={{ tomcat_user }}
           Group={{ tomcat_group }}
+
           Environment=JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
           Environment=CATALINA_PID={{ tomcat_dir }}/temp/tomcat.pid
           Environment=CATALINA_HOME={{ tomcat_dir }}
@@ -65,13 +98,17 @@
           ExecStart={{ tomcat_dir }}/bin/startup.sh
           ExecStop={{ tomcat_dir }}/bin/shutdown.sh
 
+          Restart=always
+
           [Install]
           WantedBy=multi-user.target
-    - name: Reload systemd 
+
+    - name: Reload systemd
       systemd:
-         daemon_reload: yes
+        daemon_reload: yes
+
     - name: Start Tomcat
       systemd:
-         name: tomcat
-         state: started
-         enabled: yes
+        name: tomcat
+        state: started
+        enabled: yes
