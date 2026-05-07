@@ -19,3 +19,6 @@ admin_password      = "Nathcorp!1234"
 vm_size             = "Standard_B1s"
 
 vm_count            = 3
+
+ansible_user        = "devOpsUser"
+ansible_password    = "Nathcorp!1234"

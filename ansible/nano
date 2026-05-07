@@ -1,0 +1,17 @@
+---
+- name: Deploy WAR to multiple tomcat servers
+  hosts: webservers
+  become: yes
+
+  tasks:
+    - name: Copy WAR file to Tomcat
+      copy:
+        src: /var/lib/jenkins/workspace/WAR-Pipeline-UI/target/wwp-1.0.0.war
+        dest: /opt/tomcat/webapps/wwp-1.0.0.war
+        owner: tomcat
+        group: tomcat
+        mode: '0755'
+    - name: Restart Tomcat
+      service:
+        name: tomcat
+        state: restarted

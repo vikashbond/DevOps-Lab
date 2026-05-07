@@ -62,3 +62,9 @@ variable "vm_size" {
 variable "vm_count" {
   type     = number
 }
+
+
+variable "ansible_user" {}
+variable "ansible_password" {
+  sensitive = true
+}

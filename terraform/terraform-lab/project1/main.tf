@@ -126,12 +126,15 @@ resource "null_resource" "update_inventory" {
 
     command = <<EOT
 
-sed -i '/\\[webservers\\]/,$d' /home/devOpsUser/DevOps-Lab/ansible/inventory.ini
+# Remove ONLY webservers block (safe)
+sed -i '/\\[webservers\\]/,/^\\[/d' /home/devOpsUser/DevOps-Lab/ansible/inventory.ini
 
+# Add fresh block
+echo "" >> /home/devOpsUser/DevOps-Lab/ansible/inventory.ini
 echo "[webservers]" >> /home/devOpsUser/DevOps-Lab/ansible/inventory.ini
 
 %{ for ip in azurerm_public_ip.pip[*].ip_address ~}
-echo "${ip}" >> /home/devOpsUser/DevOps-Lab/ansible/inventory.ini
+echo "${ip} ansible_user=${var.ansible_user} ansible_ssh_pass=${var.ansible_password}" >> /home/devOpsUser/DevOps-Lab/ansible/inventory.ini
 %{ endfor ~}
 
 EOT
